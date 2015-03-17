@@ -1,6 +1,14 @@
+// Copyright 2015 Janos Guljas. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+// Package resenje.org/daemon provides functionality to execute binaries
+// in the background. It requires no external dependencies.
+
 package daemon
 
 import (
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -9,12 +17,19 @@ import (
 	"syscall"
 )
 
+// Structure that holds information about PID file.
 type Daemon struct {
 	PidFileName string
 	PidFileMode os.FileMode
 }
 
-func (d *Daemon) Daemonize(workDir string, inFile *os.File, outFile *os.File, errFile *os.File) error {
+// Daemonize terminates the execution of the initial process
+// and starts a new process in the background. If workDir is not
+// zero length string, os.Chdir is executed with that value.
+// New process will have standard input, output and error specified by
+// inFile, outFile and errFile.
+// PID file will be created with the second process ID.
+func (d *Daemon) Daemonize(workDir string, inFile io.Reader, outFile io.Writer, errFile io.Writer) error {
 	if syscall.Getppid() != 1 {
 		path, err := filepath.Abs(os.Args[0])
 		if err != nil {
@@ -50,6 +65,7 @@ func (d *Daemon) Daemonize(workDir string, inFile *os.File, outFile *os.File, er
 	return nil
 }
 
+// Cleanup removes PID file.
 func (d *Daemon) Cleanup() error {
 	if d.PidFileName == "" {
 		return nil
@@ -57,16 +73,20 @@ func (d *Daemon) Cleanup() error {
 	return os.Remove(d.PidFileName)
 }
 
+// Pid returns process ID if available.
 func (d *Daemon) Pid() int {
 	pid, _ := ioutil.ReadFile(d.PidFileName)
 	p, _ := strconv.Atoi(string(pid))
 	return p
 }
 
+// Process returns an os.Process and error returned by os.FindProcess
+// based on the content from PID file.
 func (d *Daemon) Process() (*os.Process, error) {
 	return os.FindProcess(d.Pid())
 }
 
+// Signal sends os.Signal to the daemonized process.
 func (d *Daemon) Signal(sig os.Signal) error {
 	process, err := d.Process()
 	if err != nil {
@@ -75,6 +95,8 @@ func (d *Daemon) Signal(sig os.Signal) error {
 	return process.Signal(sig)
 }
 
+// Status returns PID as int of a daemonized process. If the process is
+// not running, returned error is not nil.
 func (d *Daemon) Status() (pid int, err error) {
 	p, err := d.Process()
 	if err != nil {
@@ -83,6 +105,8 @@ func (d *Daemon) Status() (pid int, err error) {
 	return p.Pid, p.Signal(syscall.Signal(0x0))
 }
 
+// Stops sends SIGTERM signal to the daemonized process. If it fails,
+// SIGKILL signal is sent.
 func (d *Daemon) Stop() error {
 	process, err := d.Process()
 	if err != nil {
