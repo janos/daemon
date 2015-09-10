@@ -1,5 +1,5 @@
 # Daemon for Go
 
-## Instalation
+## Installation
 
 Run `go get resenje.org/daemon` from command line.
