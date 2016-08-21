@@ -8,6 +8,8 @@
 package daemon
 
 import (
+	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -73,17 +75,27 @@ func (d *Daemon) Cleanup() error {
 	return os.Remove(d.PidFileName)
 }
 
-// Pid returns process ID if available.
-func (d *Daemon) Pid() int {
-	pid, _ := ioutil.ReadFile(d.PidFileName)
-	p, _ := strconv.Atoi(string(pid))
-	return p
+// PID returns process ID if available.
+func (d *Daemon) Pid() (int, error) {
+	pid, err := ioutil.ReadFile(d.PidFileName)
+	if err != nil {
+		return 0, err
+	}
+	p, err := strconv.Atoi(string(bytes.TrimSpace(pid)))
+	if err != nil {
+		return 0, fmt.Errorf("%s: invalid process id", d.PidFileName)
+	}
+	return p, nil
 }
 
 // Process returns an os.Process and error returned by os.FindProcess
 // based on the content from PID file.
 func (d *Daemon) Process() (*os.Process, error) {
-	return os.FindProcess(d.Pid())
+	p, err := d.Pid()
+	if err != nil {
+		return nil, err
+	}
+	return os.FindProcess(p)
 }
 
 // Signal sends os.Signal to the daemonized process.
