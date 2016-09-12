@@ -53,8 +53,6 @@ func (d *Daemon) Daemonize(workDir string, inFile io.Reader, outFile io.Writer, 
 		os.Chdir(workDir)
 	}
 
-	syscall.Umask(0)
-
 	s_ret, s_err := syscall.Setsid()
 	if s_err != nil {
 		return s_err
