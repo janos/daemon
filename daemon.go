@@ -50,12 +50,11 @@ func (d *Daemon) Daemonize(workDir string, inFile io.Reader, outFile io.Writer, 
 		if err := os.Chdir(workDir); err != nil {
 			return err
 		}
-		os.Chdir(workDir)
 	}
 
-	s, err := syscall.Setsid()
+	s, err := setSid()
 	if err != nil {
-		return fmt.Errorf("setsid syscall: %s", err)
+		return err
 	}
 
 	return ioutil.WriteFile(d.PidFileName, []byte(strconv.Itoa(s)), d.PidFileMode)
